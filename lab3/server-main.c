@@ -119,8 +119,34 @@ build_packet(char *buf1, char * buf2, uint16_t pkt_size)
 	struct ipv4_hdr *ip_hdr1, *ip_hdr2;
 	struct udp_hdr *udp_hdr1, *udp_hdr2;
 
+	eth_hdr1 = (struct ether_hdr *)buf1;
+	ip_hdr1 = (struct ipv4_hdr *)(eth_hdr1 + 1);
+	udp_hdr1 = (struct udp_hdr *)(ip_hdr1 + 1);
 
+	eth_hdr2 = (struct ether_hdr *)buf2;
+	ip_hdr2 = (struct ipv4_hdr *)(eth_hdr2 + 1);
+	udp_hdr2 = (struct udp_hdr *)(ip_hdr2 + 1);
 	
+	//struct ether_addr s_addr,d_addr;
+	ether_addr_copy(&eth_hdr1->d_addr, &eth_hdr2->s_addr);
+	ether_addr_copy(&eth_hdr1->s_addr, &eth_hdr2->d_addr);
+	eth_hdr2->ether_type = htons(ETHER_TYPE_IPv4);
+
+	ip_hdr2->version_ihl = (4<<4) + (sizeof(struct ipv4_hdr)>>2);
+	ip_hdr2->type_of_service = 0;
+	ip_hdr2->total_length = htons(pkt_size - sizeof(struct ether_hdr));
+	ip_hdr2->packet_id = 0;
+	ip_hdr2->fragment_offset = 0;
+	ip_hdr2->time_to_live = 255;
+	ip_hdr2->next_proto_id = IPPROTO_UDP;
+	ip_hdr2->hdr_checksum = 0;
+	rte_memcpy(&ip_hdr2->src_addr, &ip_hdr1->dst_addr, 4);
+	rte_memcpy(&ip_hdr2->dst_addr, &ip_hdr1->src_addr, 4);
+
+	udp_hdr2->src_port = udp_hdr1->dst_port;
+	udp_hdr2->dst_port = udp_hdr1->src_port;
+	udp_hdr2->dgram_len = htons(pkt_size - sizeof(struct ether_hdr) - sizeof(struct ipv4_hdr));;
+	udp_hdr2->dgram_cksum = 0;
 	//Add your code here.
 	//Part 4.
 	
@@ -144,7 +170,8 @@ lcore_main(void)
 	struct ipv4_hdr *ip_hdr;
 	struct udp_hdr *udp_hdr;
 	
-	uint8_t *buffer;
+	uint8_t *buffer, *buf;
+	uint8_t *pkt;
 	int nbytes;
 	struct Message msg;
 	memset(&msg, 0, sizeof(struct Message));
@@ -170,15 +197,21 @@ lcore_main(void)
 		free_resource_records(msg.additionals);
 		memset(&msg, 0, sizeof(struct Message));
 		/*********preparation (end)**********/
-		struct rte_mbuf *query_buf, *reply_buf;
-		const uint16_t nb_rx = rte_eth_rx_burst(port, 0, query_buf, 1);
+		struct rte_mbuf *query_buf;
+		const uint16_t nb_rx = rte_eth_rx_burst(port, 0, &query_buf, 1);
 		if (likely(nb_rx == 0)) {
 			continue;
 		}
-		printf("1\n");
-		nbytes = rte_pktmbuf_data_len(query_buf);
+		
+		//printf("1\n");
 		//rte_memcpy(buffer, rte_pktmbuf_mtod(query_buf, uint8_t*), nbytes);
-		buffer = rte_pktmbuf_mtod(query_buf, uint8_t*);
+		pkt = rte_pktmbuf_mtod(query_buf, uint8_t*);
+		eth_hdr = (struct ether_hdr *)pkt;
+		ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+		udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
+		buffer = (uint8_t *)(udp_hdr + 1);
+		nbytes = rte_pktmbuf_data_len(query_buf) - sizeof(struct ether_hdr) - sizeof(struct ipv4_hdr) - sizeof(struct udp_hdr);
+		//printf("%s,!!!!,%d\n",buffer,nbytes);
 		//rte_pktmbuf_free(query_buf);
 		//Add your code here.
 		//Part 1.
@@ -187,20 +220,21 @@ lcore_main(void)
 		
 		/*********read input (begin)**********/
 		if (decode_msg(&msg, buffer, nbytes) != 0) {
-			printf("no\n");	
+			//printf("no\n");	
 			rte_pktmbuf_free(query_buf);		
 			continue;
 		}
 		/* Print query */
+		printf("1\n");
 		print_query(&msg);
-
+		printf("2\n");
 		resolver_process(&msg);
-
+		printf("3\n");
 		/* Print response */
 		print_query(&msg);
 		/*********read input (end)**********/
-		
-		
+		printf("4\n");
+
 		//Add your code here.
 		//Part 2.
 		
@@ -215,8 +249,33 @@ lcore_main(void)
 
 		uint32_t buflen = p - buffer;
 		/*********write output (end)**********/
-		rte_pktmbuf_free(query_buf);
+		struct rte_mbuf *reply_buf;
+		int ret;
+		uint16_t pkt_size=sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + buflen;
+		do {
+			reply_buf = rte_pktmbuf_alloc(mbuf_pool);
+		} while (unlikely(reply_buf == NULL));
+		reply_buf->nb_segs = 1;
+		reply_buf->next = NULL;
+		reply_buf->pkt_len = pkt_size;
+		reply_buf->data_len = pkt_size;
+
+		pkt = rte_pktmbuf_mtod(reply_buf, uint8_t*);
+		eth_hdr = (struct ether_hdr *)pkt;
+		ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+		udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
+		buf = (uint8_t *)(udp_hdr + 1);
+		rte_memcpy(buf, buffer, buflen);		
+
+		build_packet(rte_pktmbuf_mtod(query_buf, void *), rte_pktmbuf_mtod(reply_buf, void *), pkt_size);
+
+		ret = rte_eth_tx_burst(0, 0, &reply_buf, 1);
 		
+		/* Free unsent packet. */
+		if (unlikely(ret < 1)) {
+			rte_pktmbuf_free(reply_buf);
+		}
+		rte_pktmbuf_free(query_buf);
 		//Add your code here.
 		//Part 3.
 		
