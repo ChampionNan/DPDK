@@ -147,6 +147,7 @@ build_packet(char *buf1, char * buf2, uint16_t pkt_size)
 	udp_hdr2->dst_port = udp_hdr1->src_port;
 	udp_hdr2->dgram_len = htons(pkt_size - sizeof(struct ether_hdr) - sizeof(struct ipv4_hdr));;
 	udp_hdr2->dgram_cksum = 0;
+	ip_hdr2->hdr_checksum = rte_ipv4_cksum(ip_hdr2);
 	//Add your code here.
 	//Part 4.
 	
@@ -216,7 +217,13 @@ lcore_main(void)
 		//Add your code here.
 		//Part 1.
 		
-		
+
+		if (eth_hdr->ether_type!=htons(ETHER_TYPE_IPv4) || 
+		ip_hdr->next_proto_id!=IPPROTO_UDP ||
+		udp_hdr->dst_port!=htons(9000)) {
+			rte_pktmbuf_free(query_buf);
+			continue;
+		}
 		
 		/*********read input (begin)**********/
 		if (decode_msg(&msg, buffer, nbytes) != 0) {
@@ -225,15 +232,15 @@ lcore_main(void)
 			continue;
 		}
 		/* Print query */
-		printf("1\n");
+		//printf("1\n");
 		print_query(&msg);
-		printf("2\n");
+		//printf("2\n");
 		resolver_process(&msg);
-		printf("3\n");
+		//printf("3\n");
 		/* Print response */
 		print_query(&msg);
 		/*********read input (end)**********/
-		printf("4\n");
+		//printf("4\n");
 
 		//Add your code here.
 		//Part 2.
