@@ -173,7 +173,7 @@ lcore_main(void)
 	
 	uint8_t *buffer, *buf;
 	uint8_t *pkt;
-	int nbytes;
+	int nbytes, sends;
 	struct Message msg;
 	memset(&msg, 0, sizeof(struct Message));
 	
@@ -198,20 +198,24 @@ lcore_main(void)
 		free_resource_records(msg.additionals);
 		memset(&msg, 0, sizeof(struct Message));
 		/*********preparation (end)**********/
-		struct rte_mbuf *query_buf;
-		const uint16_t nb_rx = rte_eth_rx_burst(port, 0, &query_buf, 1);
+		struct rte_mbuf *query_buf[BURST_SIZE];
+		const uint16_t nb_rx = rte_eth_rx_burst(port, 0, query_buf, BURST_SIZE);
 		if (likely(nb_rx == 0)) {
 			continue;
 		}
 		
 		//printf("1\n");
 		//rte_memcpy(buffer, rte_pktmbuf_mtod(query_buf, uint8_t*), nbytes);
-		pkt = rte_pktmbuf_mtod(query_buf, uint8_t*);
-		eth_hdr = (struct ether_hdr *)pkt;
-		ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
-		udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
-		buffer = (uint8_t *)(udp_hdr + 1);
-		nbytes = rte_pktmbuf_data_len(query_buf) - sizeof(struct ether_hdr) - sizeof(struct ipv4_hdr) - sizeof(struct udp_hdr);
+		uint16_t i;
+		for (i = 0;i < nb_rx; i++)
+		{
+			pkt = rte_pktmbuf_mtod(query_buf[i], uint8_t*);
+			eth_hdr = (struct ether_hdr *)pkt;
+			ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+			udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
+			buffer = (uint8_t *)(udp_hdr + 1);
+			nbytes = rte_pktmbuf_data_len(query_buf[i]) - sizeof(struct ether_hdr) - sizeof(struct ipv4_hdr) - sizeof(struct udp_hdr);
+		
 		//printf("%s,!!!!,%d\n",buffer,nbytes);
 		//rte_pktmbuf_free(query_buf);
 		//Add your code here.
@@ -221,14 +225,12 @@ lcore_main(void)
 		if (eth_hdr->ether_type!=htons(ETHER_TYPE_IPv4) || 
 		ip_hdr->next_proto_id!=IPPROTO_UDP ||
 		udp_hdr->dst_port!=htons(9000)) {
-			rte_pktmbuf_free(query_buf);
 			continue;
 		}
 		
 		/*********read input (begin)**********/
 		if (decode_msg(&msg, buffer, nbytes) != 0) {
-			//printf("no\n");	
-			rte_pktmbuf_free(query_buf);		
+			//printf("no\n");			
 			continue;
 		}
 		/* Print query */
@@ -250,18 +252,19 @@ lcore_main(void)
 		/*********write output (begin)**********/
 		uint8_t *p = buffer;
 		if (encode_msg(&msg, &p) != 0) {
-			rte_pktmbuf_free(query_buf);
 			continue;
 		}
 
 		uint32_t buflen = p - buffer;
 		/*********write output (end)**********/
+		sends = 0;
 		struct rte_mbuf *reply_buf;
-		int ret;
 		uint16_t pkt_size=sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + buflen;
-		do {
-			reply_buf = rte_pktmbuf_alloc(mbuf_pool);
-		} while (unlikely(reply_buf == NULL));
+		if (sends == 0) {
+			do {
+				reply_buf = rte_pktmbuf_alloc(mbuf_pool);
+			} while (unlikely(reply_buf == NULL));
+		}
 		reply_buf->nb_segs = 1;
 		reply_buf->next = NULL;
 		reply_buf->pkt_len = pkt_size;
@@ -274,15 +277,27 @@ lcore_main(void)
 		buf = (uint8_t *)(udp_hdr + 1);
 		rte_memcpy(buf, buffer, buflen);		
 
-		build_packet(rte_pktmbuf_mtod(query_buf, void *), rte_pktmbuf_mtod(reply_buf, void *), pkt_size);
-
-		ret = rte_eth_tx_burst(0, 0, &reply_buf, 1);
-		
-		/* Free unsent packet. */
-		if (unlikely(ret < 1)) {
+		build_packet(rte_pktmbuf_mtod(query_buf[i], void *), rte_pktmbuf_mtod(reply_buf, void *), pkt_size);
+		sends += 1;
+		uint16_t ret;
+		ret = rte_eth_tx_burst(0, 0, &reply_buf, sends);
+		if (likely(ret == 0)) {
 			rte_pktmbuf_free(reply_buf);
 		}
+		}
+		
+		//uint16_t ret;
+		//ret = rte_eth_tx_burst(0, 0, reply_buf, sends);
 		rte_pktmbuf_free(query_buf);
+		
+		/* Free unsent packet. */
+		/*
+		if (likely(ret < sends)) {
+			uint16_t j;
+			for (j = ret; j < sends; j++)
+				rte_pktmbuf_free(reply_buf[j]);
+		}
+		*/
 		//Add your code here.
 		//Part 3.
 		
