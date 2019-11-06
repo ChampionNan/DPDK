@@ -25,7 +25,7 @@
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
 
-#define NUM_MBUFS 8191
+#define NUM_MBUFS 16383
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 32
 
@@ -176,7 +176,7 @@ lcore_main(void)
 	int nbytes, sends;
 	struct Message msg;
 	memset(&msg, 0, sizeof(struct Message));
-	
+	uint32_t count = 0;	
 	/*
 	 * Check that the port is on the same NUMA node as the polling thread
 	 * for best performance.
@@ -192,11 +192,11 @@ lcore_main(void)
 	/* Run until the application is quit or killed. */
 	for (;;) {
 		/*********preparation (begin)**********/
-		free_questions(msg.questions);
-		free_resource_records(msg.answers);
-		free_resource_records(msg.authorities);
-		free_resource_records(msg.additionals);
-		memset(&msg, 0, sizeof(struct Message));
+		//free_questions(msg.questions);
+		//free_resource_records(msg.answers);
+		//free_resource_records(msg.authorities);
+		//free_resource_records(msg.additionals);
+		//memset(&msg, 0, sizeof(struct Message));
 		/*********preparation (end)**********/
 		struct rte_mbuf *query_buf[BURST_SIZE];
 		const uint16_t nb_rx = rte_eth_rx_burst(port, 0, query_buf, BURST_SIZE);
@@ -207,8 +207,13 @@ lcore_main(void)
 		//printf("1\n");
 		//rte_memcpy(buffer, rte_pktmbuf_mtod(query_buf, uint8_t*), nbytes);
 		uint16_t i;
-		for (i = 0;i < nb_rx; i++)
+		for (i = 0; i < nb_rx; i++)
 		{
+			free_questions(msg.questions);
+			free_resource_records(msg.answers);
+			free_resource_records(msg.authorities);
+			free_resource_records(msg.additionals);
+			memset(&msg, 0, sizeof(struct Message));
 			pkt = rte_pktmbuf_mtod(query_buf[i], uint8_t*);
 			eth_hdr = (struct ether_hdr *)pkt;
 			ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
@@ -241,6 +246,8 @@ lcore_main(void)
 		//printf("3\n");
 		/* Print response */
 		print_query(&msg);
+		count += 1;
+		printf("%d\n",count);
 		/*********read input (end)**********/
 		//printf("4\n");
 
@@ -288,8 +295,10 @@ lcore_main(void)
 		
 		//uint16_t ret;
 		//ret = rte_eth_tx_burst(0, 0, reply_buf, sends);
-		rte_pktmbuf_free(query_buf);
-		
+		for (i = 0; i < nb_rx; i++)
+		{
+			rte_pktmbuf_free(query_buf[i]);
+		}
 		/* Free unsent packet. */
 		/*
 		if (likely(ret < sends)) {
