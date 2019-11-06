@@ -199,6 +199,7 @@ lcore_main(void)
 		//memset(&msg, 0, sizeof(struct Message));
 		/*********preparation (end)**********/
 		struct rte_mbuf *query_buf[BURST_SIZE];
+		struct rte_mbuf *reply_buf[BURST_SIZE];
 		const uint16_t nb_rx = rte_eth_rx_burst(port, 0, query_buf, BURST_SIZE);
 		if (likely(nb_rx == 0)) {
 			continue;
@@ -207,6 +208,7 @@ lcore_main(void)
 		//printf("1\n");
 		//rte_memcpy(buffer, rte_pktmbuf_mtod(query_buf, uint8_t*), nbytes);
 		uint16_t i;
+		sends = 0;
 		for (i = 0; i < nb_rx; i++)
 		{
 			free_questions(msg.questions);
@@ -264,33 +266,36 @@ lcore_main(void)
 
 		uint32_t buflen = p - buffer;
 		/*********write output (end)**********/
-		sends = 0;
-		struct rte_mbuf *reply_buf;
+		
 		uint16_t pkt_size=sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + buflen;
-		if (sends == 0) {
-			do {
-				reply_buf = rte_pktmbuf_alloc(mbuf_pool);
-			} while (unlikely(reply_buf == NULL));
-		}
-		reply_buf->nb_segs = 1;
-		reply_buf->next = NULL;
-		reply_buf->pkt_len = pkt_size;
-		reply_buf->data_len = pkt_size;
+		
+		do {
+			reply_buf[sends] = rte_pktmbuf_alloc(mbuf_pool);
+		} while (unlikely(reply_buf[sends] == NULL));
 
-		pkt = rte_pktmbuf_mtod(reply_buf, uint8_t*);
+		reply_buf[sends]->nb_segs = 1;
+		reply_buf[sends]->next = NULL;
+		reply_buf[sends]->pkt_len = pkt_size;
+		reply_buf[sends]->data_len = pkt_size;
+		if (sends != 0) {
+			reply_buf[sends-1]->next = reply_buf[sends];
+		}
+
+		pkt = rte_pktmbuf_mtod(reply_buf[sends], uint8_t*);
 		eth_hdr = (struct ether_hdr *)pkt;
 		ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 		udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
 		buf = (uint8_t *)(udp_hdr + 1);
 		rte_memcpy(buf, buffer, buflen);		
 
-		build_packet(rte_pktmbuf_mtod(query_buf[i], void *), rte_pktmbuf_mtod(reply_buf, void *), pkt_size);
+		build_packet(rte_pktmbuf_mtod(query_buf[i], void *), rte_pktmbuf_mtod(reply_buf[sends], void *), pkt_size);
 		sends += 1;
+		/*
 		uint16_t ret;
 		ret = rte_eth_tx_burst(0, 0, &reply_buf, sends);
 		if (likely(ret == 0)) {
 			rte_pktmbuf_free(reply_buf);
-		}
+		}*/
 		}
 		
 		//uint16_t ret;
@@ -299,14 +304,16 @@ lcore_main(void)
 		{
 			rte_pktmbuf_free(query_buf[i]);
 		}
+		uint16_t ret;
+		ret = rte_eth_tx_burst(0, 0, reply_buf, sends);
 		/* Free unsent packet. */
-		/*
+		printf("%d   !!! %d  !!! %d\n",ret,sends,nb_rx);	
 		if (likely(ret < sends)) {
 			uint16_t j;
 			for (j = ret; j < sends; j++)
 				rte_pktmbuf_free(reply_buf[j]);
 		}
-		*/
+		
 		//Add your code here.
 		//Part 3.
 		
