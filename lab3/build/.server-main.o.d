@@ -1,77 +1,117 @@
-dep_server-main.o = /home/zqykawayi/DPDK/lab3/server-main.c \
+dep_server-main.o = /home/zqykawayi/NetworkAlgothriom/lab3/server-main.c \
  /usr/include/stdc-predef.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_config.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_common.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/stdint.h \
- /usr/include/stdint.h /usr/include/features.h /usr/include/sys/cdefs.h \
- /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h \
- /usr/include/gnu/stubs-64.h /usr/include/bits/wchar.h \
- /usr/include/stdlib.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/stddef.h \
- /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h \
- /usr/include/endian.h /usr/include/bits/endian.h \
- /usr/include/bits/byteswap.h /usr/include/bits/types.h \
- /usr/include/bits/typesizes.h /usr/include/bits/byteswap-16.h \
- /usr/include/xlocale.h /usr/include/sys/types.h /usr/include/time.h \
- /usr/include/sys/select.h /usr/include/bits/select.h \
- /usr/include/bits/sigset.h /usr/include/bits/time.h \
- /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h \
- /usr/include/alloca.h /usr/include/bits/stdlib-float.h \
- /usr/include/ctype.h /usr/include/errno.h /usr/include/bits/errno.h \
- /usr/include/linux/errno.h /usr/include/asm/errno.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/stdint.h /usr/include/stdint.h \
+ /usr/include/features.h /usr/include/x86_64-linux-gnu/sys/cdefs.h \
+ /usr/include/x86_64-linux-gnu/bits/wordsize.h \
+ /usr/include/x86_64-linux-gnu/gnu/stubs.h \
+ /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
+ /usr/include/x86_64-linux-gnu/bits/wchar.h /usr/include/stdlib.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h \
+ /usr/include/x86_64-linux-gnu/bits/waitflags.h \
+ /usr/include/x86_64-linux-gnu/bits/waitstatus.h /usr/include/endian.h \
+ /usr/include/x86_64-linux-gnu/bits/endian.h \
+ /usr/include/x86_64-linux-gnu/bits/byteswap.h \
+ /usr/include/x86_64-linux-gnu/bits/types.h \
+ /usr/include/x86_64-linux-gnu/bits/typesizes.h \
+ /usr/include/x86_64-linux-gnu/bits/byteswap-16.h /usr/include/xlocale.h \
+ /usr/include/x86_64-linux-gnu/sys/types.h /usr/include/time.h \
+ /usr/include/x86_64-linux-gnu/sys/select.h \
+ /usr/include/x86_64-linux-gnu/bits/select.h \
+ /usr/include/x86_64-linux-gnu/bits/sigset.h \
+ /usr/include/x86_64-linux-gnu/bits/time.h \
+ /usr/include/x86_64-linux-gnu/bits/select2.h \
+ /usr/include/x86_64-linux-gnu/sys/sysmacros.h \
+ /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h /usr/include/alloca.h \
+ /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
+ /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
+ /usr/include/x86_64-linux-gnu/bits/stdlib.h /usr/include/ctype.h \
+ /usr/include/errno.h /usr/include/x86_64-linux-gnu/bits/errno.h \
+ /usr/include/linux/errno.h /usr/include/x86_64-linux-gnu/asm/errno.h \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/limits.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/syslimits.h \
- /usr/include/limits.h /usr/include/bits/posix1_lim.h \
- /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
- /usr/include/bits/posix2_lim.h /usr/include/bits/xopen_lim.h \
- /usr/include/bits/stdio_lim.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include-fixed/limits.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include-fixed/syslimits.h \
+ /usr/include/limits.h /usr/include/x86_64-linux-gnu/bits/posix1_lim.h \
+ /usr/include/x86_64-linux-gnu/bits/local_lim.h \
+ /usr/include/linux/limits.h \
+ /usr/include/x86_64-linux-gnu/bits/posix2_lim.h \
+ /usr/include/x86_64-linux-gnu/bits/xopen_lim.h \
+ /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_config.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_log.h \
  /usr/include/stdio.h /usr/include/libio.h /usr/include/_G_config.h \
- /usr/include/wchar.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/stdarg.h \
- /usr/include/bits/sys_errlist.h /usr/include/bits/stdio.h \
- /usr/include/sys/queue.h \
+ /usr/include/wchar.h /usr/lib/gcc/x86_64-linux-gnu/5/include/stdarg.h \
+ /usr/include/x86_64-linux-gnu/bits/sys_errlist.h \
+ /usr/include/x86_64-linux-gnu/bits/stdio.h \
+ /usr/include/x86_64-linux-gnu/bits/stdio2.h \
+ /usr/include/x86_64-linux-gnu/sys/queue.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_memory.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_compat.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_memcpy.h \
- /usr/include/string.h /usr/include/bits/string.h \
- /usr/include/bits/string2.h \
+ /usr/include/string.h /usr/include/x86_64-linux-gnu/bits/string.h \
+ /usr/include/x86_64-linux-gnu/bits/string2.h \
+ /usr/include/x86_64-linux-gnu/bits/string3.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_vect.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/generic/rte_vect.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/x86intrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/ia32intrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/mmintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/xmmintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/mm_malloc.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/emmintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/pmmintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/tmmintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/smmintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/popcntintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/wmmintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/immintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/avxintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/avx2intrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/lzcntintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/bmiintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/bmi2intrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/fmaintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/f16cintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/rtmintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/xtestintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/rdseedintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/prfchwintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/fxsrintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/xsaveintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/xsaveoptintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/adxintrin.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/pkuintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/x86intrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/ia32intrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/mmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/xmmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/mm_malloc.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/emmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/pmmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/tmmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/ammintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/smmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/popcntintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/wmmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/immintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avxintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx2intrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512fintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512erintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512pfintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512cdintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512vlintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512bwintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512dqintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512vlbwintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512vldqintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512ifmaintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512ifmavlintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512vbmiintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512vbmivlintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/shaintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/lzcntintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/bmiintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/bmi2intrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/fmaintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/f16cintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/rtmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/xtestintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/mm3dnow.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/prfchwintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/fma4intrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/xopintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/lwpintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/tbmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/rdseedintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/fxsrintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/xsaveintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/xsaveoptintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/adxintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/clwbintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/pcommitintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/clflushoptintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/xsavesintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/xsavecintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/mwaitxintrin.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_eal.h \
- /usr/include/sched.h /usr/include/bits/sched.h /usr/include/bits/timex.h \
+ /usr/include/sched.h /usr/include/x86_64-linux-gnu/bits/sched.h \
+ /usr/include/x86_64-linux-gnu/bits/timex.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_per_lcore.h \
- /usr/include/pthread.h /usr/include/bits/setjmp.h \
+ /usr/include/pthread.h /usr/include/x86_64-linux-gnu/bits/setjmp.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_bus.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_dev.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_pci_dev_feature_defs.h \
@@ -120,16 +160,23 @@ dep_server-main.o = /home/zqykawayi/DPDK/lab3/server-main.c \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_ethdev_core.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_cycles.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_ip.h \
- /usr/include/netinet/in.h /usr/include/sys/socket.h \
- /usr/include/sys/uio.h /usr/include/bits/uio.h \
- /usr/include/bits/socket.h /usr/include/bits/socket_type.h \
- /usr/include/bits/sockaddr.h /usr/include/asm/socket.h \
- /usr/include/asm-generic/socket.h /usr/include/asm/sockios.h \
- /usr/include/asm-generic/sockios.h /usr/include/bits/in.h \
+ /usr/include/netinet/in.h /usr/include/x86_64-linux-gnu/sys/socket.h \
+ /usr/include/x86_64-linux-gnu/sys/uio.h \
+ /usr/include/x86_64-linux-gnu/bits/uio.h \
+ /usr/include/x86_64-linux-gnu/bits/socket.h \
+ /usr/include/x86_64-linux-gnu/bits/socket_type.h \
+ /usr/include/x86_64-linux-gnu/bits/sockaddr.h \
+ /usr/include/x86_64-linux-gnu/asm/socket.h \
+ /usr/include/asm-generic/socket.h \
+ /usr/include/x86_64-linux-gnu/asm/sockios.h \
+ /usr/include/asm-generic/sockios.h \
+ /usr/include/x86_64-linux-gnu/bits/socket2.h \
+ /usr/include/x86_64-linux-gnu/bits/in.h \
  /home/zqykawayi/dpdk-stable-18.11.2//build/include/rte_udp.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/stdbool.h \
- /home/zqykawayi/DPDK/lab3/SimpleDNS.h /usr/include/arpa/inet.h \
- /usr/include/netdb.h /usr/include/rpc/netdb.h \
- /usr/include/bits/siginfo.h /usr/include/bits/netdb.h \
- /usr/include/ifaddrs.h /usr/include/malloc.h /usr/include/pcap/pcap.h \
- /usr/include/sys/time.h /usr/include/pcap/bpf.h
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/stdbool.h \
+ /home/zqykawayi/NetworkAlgothriom/lab3/SimpleDNS.h \
+ /usr/include/arpa/inet.h /usr/include/netdb.h /usr/include/rpc/netdb.h \
+ /usr/include/x86_64-linux-gnu/bits/siginfo.h \
+ /usr/include/x86_64-linux-gnu/bits/netdb.h /usr/include/ifaddrs.h \
+ /usr/include/malloc.h /usr/include/pcap/pcap.h \
+ /usr/include/x86_64-linux-gnu/sys/time.h /usr/include/pcap/bpf.h
