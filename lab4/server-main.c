@@ -25,6 +25,7 @@
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
+#define LCORE_NUMBER 4
 
 #define NUM_MBUFS 16383
 #define MBUF_CACHE_SIZE 250
@@ -36,7 +37,10 @@ static const struct rte_eth_conf port_conf_default = {
 	},
 };
 struct rte_mempool *mbuf_pool;
+struct rte_mbuf *query_buf[BURST_SIZE];
+struct rte_mbuf *reply_buf[BURST_SIZE];
 static volatile bool force_quit;
+uint8_t per_lcore_pkt=0;
 struct statistics {
 	uint64_t tx;
 	uint64_t rx;
@@ -207,7 +211,7 @@ build_packet(char *buf1, char * buf2, uint16_t pkt_size)
 
 }
 
-const uint16_t msg_produce(struct rte_mbuf *query_buf[BURST_SIZE], struct rte_mbuf *reply_buf[BURST_SIZE], uint16_t nb_rx)
+void msg_produce(uint16_t nb_rx)
 {
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ip_hdr;
@@ -220,7 +224,8 @@ const uint16_t msg_produce(struct rte_mbuf *query_buf[BURST_SIZE], struct rte_mb
 	int nbytes;
 	unsigned lcore_id;
 	lcore_id = rte_lcore_id();
-	uint16_t offset = lcore_id * nb_rx;
+	uint16_t offset = lcore_id * per_lcore_pkt;
+	//printf("In %d, offset = %d ,nb_rx= %d \n",lcore_id, offset, nb_rx);
 	//printf("123344,%d\n",nb_rx);
 	for (i = 0; i < nb_rx; i++)
 	{
@@ -306,14 +311,14 @@ const uint16_t msg_produce(struct rte_mbuf *query_buf[BURST_SIZE], struct rte_mb
 	}
 	pkts[lcore_id].rx += nb_rx;
 	pkts[lcore_id].tx += sends;
- 	return sends;
 }
 
 
 void send_main(uint16_t port)
 {
 	//struct rte_mbuf *query_buf, *reply_buf;
-	uint16_t i;
+	uint16_t i, lcore_id;
+	uint16_t total_sends=0, last_sends=0, sends=0;
 	
 	/* Run until the application is quit or killed. */
 	while (!force_quit) {
@@ -324,20 +329,34 @@ void send_main(uint16_t port)
 		//free_resource_records(msg.additionals);
 		//memset(&msg, 0, sizeof(struct Message));
 		/*********preparation (end)**********/
-		struct rte_mbuf *query_buf[BURST_SIZE];
-		struct rte_mbuf *reply_buf[BURST_SIZE];
 		const uint16_t nb_rx = rte_eth_rx_burst(port, 0, query_buf, BURST_SIZE);
 		if (likely(nb_rx == 0)) {
 			continue;
 		}
-		uint16_t sends;
-		sends = msg_produce(query_buf, reply_buf, nb_rx);
+		per_lcore_pkt = nb_rx / LCORE_NUMBER;
+		//printf("nb_rx==%d, per_lcore_pkt==%d ",nb_rx, per_lcore_pkt);
+		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+			if (lcore_id != LCORE_NUMBER-1)
+				rte_eal_remote_launch(msg_produce, per_lcore_pkt, lcore_id);
+			else rte_eal_remote_launch(msg_produce, nb_rx-per_lcore_pkt*(LCORE_NUMBER - 1), lcore_id);
+		}
+		msg_produce(per_lcore_pkt);
+		rte_eal_mp_wait_lcore();
 		for (i = 0; i < nb_rx; i++)
 		{
 			rte_pktmbuf_free(query_buf[i]);
 		}
-
+		//printf("RTE_MAX_ETHERPORTS=%d\n",RTE_MAX_ETHPORTS);
+		total_sends = 0;
+		for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+			total_sends += pkts[i].tx;
+			//printf("%d ",pkts[i].tx);
+		}
+		sends = total_sends - last_sends;
+		last_sends = total_sends;
+		//printf("\ntotal_sends==%d, last_sends==%d, sends ==%d\n",total_sends,last_sends,sends);
 		uint16_t ret;
+		
 		ret = rte_eth_tx_burst(0, 0, reply_buf, sends);
 		/* Free unsent packet. */
 		//printf("Send %d packets, total: %d ,recv: %d\n",ret,sends,nb_rx);	
