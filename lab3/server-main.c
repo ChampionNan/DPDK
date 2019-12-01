@@ -134,9 +134,10 @@ build_packet(char *buf1, char * buf2, uint16_t pkt_size)
 
 	ip_hdr2->version_ihl = (4<<4) + (sizeof(struct ipv4_hdr)>>2);
 	ip_hdr2->type_of_service = 0;
+	printf("pkt_size:%d\n",pkt_size);
 	ip_hdr2->total_length = htons(pkt_size - sizeof(struct ether_hdr));
-	ip_hdr2->packet_id = 0;
-	ip_hdr2->fragment_offset = 0;
+	ip_hdr2->packet_id = ip_hdr1->packet_id;
+	ip_hdr2->fragment_offset = ip_hdr1->fragment_offset;
 	ip_hdr2->time_to_live = 255;
 	ip_hdr2->next_proto_id = IPPROTO_UDP;
 	ip_hdr2->hdr_checksum = 0;
@@ -148,6 +149,36 @@ build_packet(char *buf1, char * buf2, uint16_t pkt_size)
 	udp_hdr2->dgram_len = htons(pkt_size - sizeof(struct ether_hdr) - sizeof(struct ipv4_hdr));;
 	udp_hdr2->dgram_cksum = 0;
 	ip_hdr2->hdr_checksum = rte_ipv4_cksum(ip_hdr2);
+	udp_hdr2->dgram_cksum = rte_ipv4_udptcp_cksum(ip_hdr2,udp_hdr2);
+	printf("buf1:\n");
+	int size=sizeof(struct ether_hdr)+sizeof(struct ipv4_hdr)+sizeof(struct udp_hdr);
+	int i=0;
+	for (i=0;i<size;i++) {
+		if (i==0)
+			printf("\nether:\n");
+		if (i==sizeof(struct ether_hdr))
+			printf("\nip:\n");
+		if (i==sizeof(struct ether_hdr)+sizeof(struct ipv4_hdr))
+			printf("\nudp:\n");
+		printf("%02X ",(unsigned char)buf1[i]);
+	}
+	/*
+	printf("\n");
+	for (i=0;i<size;i++) {
+		printf("%d ",sizeof(buf1[i]));
+	}
+	*/
+	printf("\n");
+	printf("buf2:\n");
+	for (i=0;i<size;i++) {
+		if (i==0)
+			printf("\nether:\n");
+		if (i==sizeof(struct ether_hdr))
+			printf("\nip:\n");
+		if (i==sizeof(struct ether_hdr)+sizeof(struct ipv4_hdr))
+			printf("\nudp:\n");
+		printf("%02X ",(unsigned char)buf2[i]);
+	}
 	//Add your code here.
 	//Part 4.
 	
@@ -198,7 +229,7 @@ lcore_main(void)
 		//free_resource_records(msg.additionals);
 		//memset(&msg, 0, sizeof(struct Message));
 		/*********preparation (end)**********/
-		struct rte_mbuf *query_buf[BURST_SIZE];
+struct rte_mbuf *qqqqqqqqqqqqqqqqaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA[BURST_SIZE];
 		struct rte_mbuf *reply_buf[BURST_SIZE];
 		const uint16_t nb_rx = rte_eth_rx_burst(port, 0, query_buf, BURST_SIZE);
 		if (likely(nb_rx == 0)) {
@@ -249,7 +280,7 @@ lcore_main(void)
 		/* Print response */
 		print_query(&msg);
 		count += 1;
-		printf("%d\n",count);
+		printf("Total DNS: %d\n",count);
 		/*********read input (end)**********/
 		//printf("4\n");
 
@@ -307,7 +338,7 @@ lcore_main(void)
 		uint16_t ret;
 		ret = rte_eth_tx_burst(0, 0, reply_buf, sends);
 		/* Free unsent packet. */
-		printf("%d   !!! %d  !!! %d\n",ret,sends,nb_rx);	
+		//printf("Send %d packets, total: %d ,recv: %d\n",ret,sends,nb_rx);	
 		if (likely(ret < sends)) {
 			uint16_t j;
 			for (j = ret; j < sends; j++)
