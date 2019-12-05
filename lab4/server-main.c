@@ -238,131 +238,132 @@ void msg_produce(uint16_t port)
 	unsigned lcore_id;
 	unsigned queue_id;
 	lcore_id = rte_lcore_id();
-	queue_id = lcore_id/4;
-	for (i = 0; i < BURST_SIZE; i++)
+	queue_id = lcore_id;
+/*	for (i = 0; i < BURST_SIZE; i++)
 	{
 		do {
 			reply_buf[i] = rte_pktmbuf_alloc(mbuf_pool);
 		} while (unlikely(reply_buf[i] == NULL));
 	}
-	//printf("In %d, offset = %d ,nb_rx= %d \n",lcore_id, offset, nb_rx);
+*/	//printf("In %d, offset = %d ,nb_rx= %d \n",lcore_id, offset, nb_rx);
 	//printf("123344,%d\n",nb_rx);
 	while (! force_quit) {
-	const uint16_t nb_rx = rte_eth_rx_burst(port, queue_id, query_buf, BURST_SIZE);
-	if (likely(nb_rx == 0)) {
-		continue;
-	}
-	sends = 0;
-	for (i = 0; i < nb_rx; i++)
-	{
-		free_questions(msg.questions);
-		free_resource_records(msg.answers);
-		free_resource_records(msg.authorities);
-		free_resource_records(msg.additionals);
-		memset(&msg, 0, sizeof(struct Message));
-		pkt = rte_pktmbuf_mtod(query_buf[i], uint8_t*);
-		eth_hdr = (struct ether_hdr *)pkt;
-		ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
-		udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
-		buffer = (uint8_t *)(udp_hdr + 1);
-		nbytes = rte_pktmbuf_data_len(query_buf[i]) - sizeof(struct ether_hdr) - sizeof(struct ipv4_hdr) - sizeof(struct udp_hdr);
+		const uint16_t nb_rx = rte_eth_rx_burst(port, queue_id, query_buf, BURST_SIZE);
+		if (likely(nb_rx == 0)) {
+			continue;
+		}
+		sends = 0;
+		for (i = 0; i < nb_rx; i++)
+		{
+			free_questions(msg.questions);
+			free_resource_records(msg.answers);
+			free_resource_records(msg.authorities);
+			free_resource_records(msg.additionals);
+			memset(&msg, 0, sizeof(struct Message));
+			pkt = rte_pktmbuf_mtod(query_buf[i], uint8_t*);
+			eth_hdr = (struct ether_hdr *)pkt;
+			ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+			udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
+			buffer = (uint8_t *)(udp_hdr + 1);
+			nbytes = rte_pktmbuf_data_len(query_buf[i]) - sizeof(struct ether_hdr) - sizeof(struct ipv4_hdr) - sizeof(struct udp_hdr);
 		
-		//printf("%s,!!!!,%d\n",buffer, nbytes);
-		//rte_pktmbuf_free(query_buf);
-		//Add your code here.
-		//Part 1.
-//		do {
-//			reply_buf[i] = rte_pktmbuf_alloc(mbuf_pool);
-//		} while (unlikely(reply_buf[i] == NULL));
-		reply_buf[i]->pkt_len = 0;
-		if (eth_hdr->ether_type!=htons(ETHER_TYPE_IPv4) || 
+			//printf("%s,!!!!,%d\n",buffer, nbytes);
+			//rte_pktmbuf_free(query_buf);
+			//Add your code here.
+			//Part 1.
+//			do {
+//				reply_buf[i] = rte_pktmbuf_alloc(mbuf_pool);
+//			} while (unlikely(reply_buf[i] == NULL));
+//			reply_buf[i]->pkt_len = 0;
+			if (eth_hdr->ether_type!=htons(ETHER_TYPE_IPv4) || 
 		ip_hdr->next_proto_id!=IPPROTO_UDP ||
 		udp_hdr->dst_port!=htons(9000)) {
-			continue;
+				continue;
+			}
+		
+			/*********read input (begin)**********/
+			if (decode_msg(&msg, buffer, nbytes) != 0) {
+				//printf("no\n");			
+				continue;
+			}
+			/* Print query */
+			//printf("1\n");
+			//print_query(&msg);
+			//printf("2\n");
+			resolver_process(&msg);
+			//printf("3\n");
+			/* Print response */
+			//print_query(&msg);
+			//printf("Total DNS: %d\n",count);
+			/*********read input (end)**********/
+			//printf("4\n");
+
+			//Add your code here.
+			//Part 2.
+		
+		
+		
+			/*********write output (begin)**********/
+			uint8_t *p = buffer;
+			if (encode_msg(&msg, &p) != 0) {
+				continue;
+			}
+
+			uint32_t buflen = p - buffer;
+			/*********write output (end)**********/
+		
+			uint16_t pkt_size=sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + buflen;
+
+			do {
+				reply_buf[sends] = rte_pktmbuf_alloc(mbuf_pool); 		
+			} while (unlikely(reply_buf[sends]==NULL));
+
+			reply_buf[sends]->nb_segs = 1;
+			reply_buf[sends]->next = NULL;
+			reply_buf[sends]->pkt_len = pkt_size;
+			reply_buf[sends]->data_len = pkt_size;
+
+			pkt = rte_pktmbuf_mtod(reply_buf[sends], uint8_t*);
+			eth_hdr = (struct ether_hdr *)pkt;
+			ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+			udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
+			buf = (uint8_t *)(udp_hdr + 1);
+			rte_memcpy(buf, buffer, buflen);		
+
+			build_packet(rte_pktmbuf_mtod(query_buf[i], void *), rte_pktmbuf_mtod(reply_buf[sends], void *), pkt_size);
+			sends += 1;
+			/*
+			uint16_t ret;
+			ret = rte_eth_tx_burst(0, 0, &reply_buf, sends);
+			if (likely(ret == 0)) {
+				rte_pktmbuf_free(reply_buf);
+			}*/
 		}
-		
-		/*********read input (begin)**********/
-		if (decode_msg(&msg, buffer, nbytes) != 0) {
-			//printf("no\n");			
-			continue;
+		pkts[lcore_id].rx += nb_rx;
+		pkts[lcore_id].tx += sends;
+		for (i = 0; i < nb_rx; i++)
+		{
+			rte_pktmbuf_free(query_buf[i]);
 		}
-		/* Print query */
-		//printf("1\n");
-		//print_query(&msg);
-		//printf("2\n");
-		resolver_process(&msg);
-		//printf("3\n");
-		/* Print response */
-		//print_query(&msg);
-		//printf("Total DNS: %d\n",count);
-		/*********read input (end)**********/
-		//printf("4\n");
-
-		//Add your code here.
-		//Part 2.
-		
-		
-		
-		/*********write output (begin)**********/
-		uint8_t *p = buffer;
-		if (encode_msg(&msg, &p) != 0) {
-			continue;
-		}
-
-		uint32_t buflen = p - buffer;
-		/*********write output (end)**********/
-		
-		uint16_t pkt_size=sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + buflen;
-
-/*		do {
-			reply_buf[sends] = rte_pktmbuf_alloc(mbuf_pool); 		
-		} while (unlikely(reply_buf[sends]==NULL));
-*/
-		reply_buf[sends]->nb_segs = 1;
-		reply_buf[sends]->next = NULL;
-		reply_buf[sends]->pkt_len = pkt_size;
-		reply_buf[sends]->data_len = pkt_size;
-
-		pkt = rte_pktmbuf_mtod(reply_buf[sends], uint8_t*);
-		eth_hdr = (struct ether_hdr *)pkt;
-		ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
-		udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
-		buf = (uint8_t *)(udp_hdr + 1);
-		rte_memcpy(buf, buffer, buflen);		
-
-		build_packet(rte_pktmbuf_mtod(query_buf[i], void *), rte_pktmbuf_mtod(reply_buf[sends], void *), pkt_size);
-		sends += 1;
-		/*
+		//printf("RTE_MAX_ETHERPORTS=%d\n",RTE_MAX_ETHPORTS);
 		uint16_t ret;
-		ret = rte_eth_tx_burst(0, 0, &reply_buf, sends);
-		if (likely(ret == 0)) {
-			rte_pktmbuf_free(reply_buf);
-		}*/
-	}
-	pkts[lcore_id].rx += nb_rx;
-	pkts[lcore_id].tx += sends;
-/*	for (i = 0; i < nb_rx; i++)
-	{
-		rte_pktmbuf_free(query_buf[i]);
-	}
-*/	//printf("RTE_MAX_ETHERPORTS=%d\n",RTE_MAX_ETHPORTS);
-	uint16_t ret;
 		
-	ret = rte_eth_tx_burst(port, queue_id, reply_buf, BURST_SIZE);
-	/* Free unsent packet. */
-	//printf("Send %d packets, total: %d ,recv: %d\n",ret,sends,nb_rx);	
-/*	if (likely(ret < sends)) {
-		uint16_t j;
-		for (j = ret; j < sends; j++)
-			rte_pktmbuf_free(reply_buf[j]);
+		ret = rte_eth_tx_burst(port, queue_id, reply_buf, sends);
+		/* Free unsent packet. */
+		//printf("Send %d packets, total: %d ,recv: %d\n",ret,sends,nb_rx);	
+		if (likely(ret < sends)) {
+			uint16_t j;
+			for (j = ret; j < sends; j++)
+				rte_pktmbuf_free(reply_buf[j]);
+		}
+		//printf("lcore: %d, sends: %d\n",lcore_id, sends);
 	}
-*/
-}
-	for (i = 0; i < BURST_SIZE; i++)
+/*	for (i = 0; i < BURST_SIZE; i++)
 	{
 		rte_pktmbuf_free(reply_buf[i]);
 		rte_pktmbuf_free(query_buf[i]);
 	}
+*/
 }
 
 
@@ -376,7 +377,7 @@ void send_main(uint16_t port)
 		rte_eal_remote_launch(msg_produce, port, lcore_id);
 	}
 	msg_produce(port);
-	rte_eal_mp_wait_lcore();		
+	//rte_eal_mp_wait_lcore();		
 		
 //	}
 }
@@ -453,10 +454,11 @@ main(int argc, char *argv[])
 	
 	printf("\nSimpleDNS (using DPDK) is running...\n");
 	send_main(portid);
+	printf("Bye!");
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		total_rx += pkts[i].rx;
 		total_tx += pkts[i].tx;
 	}
-	printf("\nTotal RX: %d, Total TX: %d\n", total_tx, total_tx);
+	printf("\nTotal RX: %d, Total TX: %d\n", total_rx, total_tx);
 	return 0;
 }
