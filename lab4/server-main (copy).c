@@ -33,13 +33,7 @@
 
 static const struct rte_eth_conf port_conf_default = {
 	.rxmode = {
-		.max_rx_pkt_len = ETH_MQ_RX_RSS,
-	},
-	.rx_adv_conf = {
-		.rss_conf = {
-			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IP | ETH_RSS_TCP | ETH_RSS_UDP,
-		},
+		.max_rx_pkt_len = ETHER_MAX_LEN,
 	},
 };
 struct rte_mempool *mbuf_pool;
@@ -61,7 +55,7 @@ static inline int
 port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
 	struct rte_eth_conf port_conf = port_conf_default;
-	const uint16_t rx_rings = 4, tx_rings = 4;
+	const uint16_t rx_rings = 1, tx_rings = 1;
 	uint16_t nb_rxd = RX_RING_SIZE;
 	uint16_t nb_txd = TX_RING_SIZE;
 	int retval;
@@ -86,7 +80,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	if (retval != 0)
 		return retval;
 
-	/* Allocate and set up RX queue per Ethernet port. */
+	/* Allocate and set up 1 RX queue per Ethernet port. */
 	for (q = 0; q < rx_rings; q++) {
 		retval = rte_eth_rx_queue_setup(port, q, nb_rxd,
 				rte_eth_dev_socket_id(port), NULL, mbuf_pool);
@@ -96,10 +90,10 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 
 	txconf = dev_info.default_txconf;
 	txconf.offloads = port_conf.txmode.offloads;
-	/* Allocate and set up TX queue per Ethernet port. */
+	/* Allocate and set up 1 TX queue per Ethernet port. */
 	for (q = 0; q < tx_rings; q++) {
 		retval = rte_eth_tx_queue_setup(port, q, nb_txd,
-				rte_eth_dev_socket_id(port), NULL);
+				rte_eth_dev_socket_id(port), &txconf);
 		if (retval < 0)
 			return retval;
 	}
@@ -217,7 +211,7 @@ build_packet(char *buf1, char * buf2, uint16_t pkt_size)
 
 }
 
-void msg_produce(uint16_t port)
+void msg_produce(uint16_t nb_rx)
 {
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ip_hdr;
@@ -230,13 +224,9 @@ void msg_produce(uint16_t port)
 	int nbytes;
 	unsigned lcore_id;
 	lcore_id = rte_lcore_id();
+	uint16_t offset = lcore_id * per_lcore_pkt;
 	//printf("In %d, offset = %d ,nb_rx= %d \n",lcore_id, offset, nb_rx);
 	//printf("123344,%d\n",nb_rx);
-	while (! force_quit) {
-	const uint16_t nb_rx = rte_eth_rx_burst(port, lcore_id, query_buf, BURST_SIZE);
-	if (likely(nb_rx == 0)) {
-		continue;
-	}
 	for (i = 0; i < nb_rx; i++)
 	{
 		free_questions(msg.questions);
@@ -244,20 +234,20 @@ void msg_produce(uint16_t port)
 		free_resource_records(msg.authorities);
 		free_resource_records(msg.additionals);
 		memset(&msg, 0, sizeof(struct Message));
-		pkt = rte_pktmbuf_mtod(query_buf[i], uint8_t*);
+		pkt = rte_pktmbuf_mtod(query_buf[offset+i], uint8_t*);
 		eth_hdr = (struct ether_hdr *)pkt;
 		ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 		udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
 		buffer = (uint8_t *)(udp_hdr + 1);
-		nbytes = rte_pktmbuf_data_len(query_buf[i]) - sizeof(struct ether_hdr) - sizeof(struct ipv4_hdr) - sizeof(struct udp_hdr);
+		nbytes = rte_pktmbuf_data_len(query_buf[offset+i]) - sizeof(struct ether_hdr) - sizeof(struct ipv4_hdr) - sizeof(struct udp_hdr);
 		
 		//printf("%s,!!!!,%d\n",buffer, nbytes);
 		//rte_pktmbuf_free(query_buf);
 		//Add your code here.
 		//Part 1.
 		do {
-			reply_buf[i] = rte_pktmbuf_alloc(mbuf_pool);
-		} while (unlikely(reply_buf[i] == NULL));
+			reply_buf[offset+i] = rte_pktmbuf_alloc(mbuf_pool);
+		} while (unlikely(reply_buf[offset+i] == NULL));
 
 		if (eth_hdr->ether_type!=htons(ETHER_TYPE_IPv4) || 
 		ip_hdr->next_proto_id!=IPPROTO_UDP ||
@@ -298,19 +288,19 @@ void msg_produce(uint16_t port)
 		
 		uint16_t pkt_size=sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + buflen;
 
-		reply_buf[sends]->nb_segs = 1;
-		reply_buf[sends]->next = NULL;
-		reply_buf[sends]->pkt_len = pkt_size;
-		reply_buf[sends]->data_len = pkt_size;
+		reply_buf[offset+sends]->nb_segs = 1;
+		reply_buf[offset+sends]->next = NULL;
+		reply_buf[offset+sends]->pkt_len = pkt_size;
+		reply_buf[offset+sends]->data_len = pkt_size;
 
-		pkt = rte_pktmbuf_mtod(reply_buf[sends], uint8_t*);
+		pkt = rte_pktmbuf_mtod(reply_buf[offset+sends], uint8_t*);
 		eth_hdr = (struct ether_hdr *)pkt;
 		ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 		udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
 		buf = (uint8_t *)(udp_hdr + 1);
 		rte_memcpy(buf, buffer, buflen);		
 
-		build_packet(rte_pktmbuf_mtod(query_buf[i], void *), rte_pktmbuf_mtod(reply_buf[sends], void *), pkt_size);
+		build_packet(rte_pktmbuf_mtod(query_buf[offset+i], void *), rte_pktmbuf_mtod(reply_buf[offset+sends], void *), pkt_size);
 		sends += 1;
 		/*
 		uint16_t ret;
@@ -321,22 +311,6 @@ void msg_produce(uint16_t port)
 	}
 	pkts[lcore_id].rx += nb_rx;
 	pkts[lcore_id].tx += sends;
-	for (i = 0; i < nb_rx; i++)
-	{
-		rte_pktmbuf_free(query_buf[i]);
-	}
-	//printf("RTE_MAX_ETHERPORTS=%d\n",RTE_MAX_ETHPORTS);
-	uint16_t ret;
-		
-	ret = rte_eth_tx_burst(port, lcore_id, reply_buf, sends);
-	/* Free unsent packet. */
-	//printf("Send %d packets, total: %d ,recv: %d\n",ret,sends,nb_rx);	
-	if (likely(ret < sends)) {
-		uint16_t j;
-		for (j = ret; j < sends; j++)
-			rte_pktmbuf_free(reply_buf[j]);
-	}
-}
 }
 
 
@@ -347,11 +321,52 @@ void send_main(uint16_t port)
 	uint16_t total_sends=0, last_sends=0, sends=0;
 	
 	/* Run until the application is quit or killed. */
-//	while (!force_quit) {
-		msg_produce(port);
+	while (!force_quit) {
+		/*********preparation (begin)**********/
+		//free_questions(msg.questions);
+		//free_resource_records(msg.answers);
+		//free_resource_records(msg.authorities);
+		//free_resource_records(msg.additionals);
+		//memset(&msg, 0, sizeof(struct Message));
+		/*********preparation (end)**********/
+		const uint16_t nb_rx = rte_eth_rx_burst(port, 0, query_buf, BURST_SIZE);
+		if (likely(nb_rx == 0)) {
+			continue;
+		}
+		per_lcore_pkt = nb_rx / LCORE_NUMBER;
+		//printf("nb_rx==%d, per_lcore_pkt==%d ",nb_rx, per_lcore_pkt);
+		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+			if (lcore_id != LCORE_NUMBER-1)
+				rte_eal_remote_launch(msg_produce, per_lcore_pkt, lcore_id);
+			else rte_eal_remote_launch(msg_produce, nb_rx-per_lcore_pkt*(LCORE_NUMBER - 1), lcore_id);
+		}
+		msg_produce(per_lcore_pkt);
+		rte_eal_mp_wait_lcore();
+		for (i = 0; i < nb_rx; i++)
+		{
+			rte_pktmbuf_free(query_buf[i]);
+		}
+		//printf("RTE_MAX_ETHERPORTS=%d\n",RTE_MAX_ETHPORTS);
+		total_sends = 0;
+		for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+			total_sends += pkts[i].tx;
+			//printf("%d ",pkts[i].tx);
+		}
+		sends = total_sends - last_sends;
+		last_sends = total_sends;
+		//printf("\ntotal_sends==%d, last_sends==%d, sends ==%d\n",total_sends,last_sends,sends);
+		uint16_t ret;
 		
+		ret = rte_eth_tx_burst(0, 0, reply_buf, sends);
+		/* Free unsent packet. */
+		//printf("Send %d packets, total: %d ,recv: %d\n",ret,sends,nb_rx);	
+		if (likely(ret < sends)) {
+			uint16_t j;
+			for (j = ret; j < sends; j++)
+				rte_pktmbuf_free(reply_buf[j]);
+		}		
 		
-//	}
+	}
 }
 /*
  * The lcore main. This is the main thread that does the work, read
