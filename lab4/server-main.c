@@ -25,7 +25,6 @@
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
-#define LCORE_NUMBER 4
 
 #define NUM_MBUFS 16383
 #define MBUF_CACHE_SIZE 250
@@ -33,18 +32,21 @@
 
 static const struct rte_eth_conf port_conf_default = {
 	.rxmode = {
-		.max_rx_pkt_len = ETH_MQ_RX_RSS,
+		.mq_mode = ETH_MQ_RX_RSS,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IP | ETH_RSS_TCP | ETH_RSS_UDP,
+			.rss_hf = 0x38d34,
 		},
 	},
+	.txmode = {
+		.mq_mode = ETH_MQ_TX_NONE,
+	}
 };
 struct rte_mempool *mbuf_pool;
-struct rte_mbuf *query_buf[BURST_SIZE];
-struct rte_mbuf *reply_buf[BURST_SIZE];
+//struct rte_mbuf *query_buf[BURST_SIZE];
+//struct rte_mbuf *reply_buf[BURST_SIZE];
 static volatile bool force_quit;
 uint8_t per_lcore_pkt=0;
 struct statistics {
@@ -68,6 +70,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	uint16_t q;
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf txconf;
+	struct rte_eth_rxconf rxconf;
 
 	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
@@ -85,7 +88,9 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
 	if (retval != 0)
 		return retval;
-
+	
+	rxconf = dev_info.default_rxconf;
+	rxconf.offloads = port_conf.rxmode.offloads;
 	/* Allocate and set up RX queue per Ethernet port. */
 	for (q = 0; q < rx_rings; q++) {
 		retval = rte_eth_rx_queue_setup(port, q, nb_rxd,
@@ -219,6 +224,8 @@ build_packet(char *buf1, char * buf2, uint16_t pkt_size)
 
 void msg_produce(uint16_t port)
 {
+	struct rte_mbuf *query_buf[BURST_SIZE];
+ 	struct rte_mbuf *reply_buf[BURST_SIZE]; 
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ip_hdr;
 	struct udp_hdr *udp_hdr;
@@ -229,14 +236,23 @@ void msg_produce(uint16_t port)
 	uint8_t *pkt;
 	int nbytes;
 	unsigned lcore_id;
+	unsigned queue_id;
 	lcore_id = rte_lcore_id();
+	queue_id = lcore_id/4;
+	for (i = 0; i < BURST_SIZE; i++)
+	{
+		do {
+			reply_buf[i] = rte_pktmbuf_alloc(mbuf_pool);
+		} while (unlikely(reply_buf[i] == NULL));
+	}
 	//printf("In %d, offset = %d ,nb_rx= %d \n",lcore_id, offset, nb_rx);
 	//printf("123344,%d\n",nb_rx);
 	while (! force_quit) {
-	const uint16_t nb_rx = rte_eth_rx_burst(port, lcore_id, query_buf, BURST_SIZE);
+	const uint16_t nb_rx = rte_eth_rx_burst(port, queue_id, query_buf, BURST_SIZE);
 	if (likely(nb_rx == 0)) {
 		continue;
 	}
+	sends = 0;
 	for (i = 0; i < nb_rx; i++)
 	{
 		free_questions(msg.questions);
@@ -255,10 +271,10 @@ void msg_produce(uint16_t port)
 		//rte_pktmbuf_free(query_buf);
 		//Add your code here.
 		//Part 1.
-		do {
-			reply_buf[i] = rte_pktmbuf_alloc(mbuf_pool);
-		} while (unlikely(reply_buf[i] == NULL));
-
+//		do {
+//			reply_buf[i] = rte_pktmbuf_alloc(mbuf_pool);
+//		} while (unlikely(reply_buf[i] == NULL));
+		reply_buf[i] = query_buf[i];
 		if (eth_hdr->ether_type!=htons(ETHER_TYPE_IPv4) || 
 		ip_hdr->next_proto_id!=IPPROTO_UDP ||
 		udp_hdr->dst_port!=htons(9000)) {
@@ -298,6 +314,10 @@ void msg_produce(uint16_t port)
 		
 		uint16_t pkt_size=sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + buflen;
 
+/*		do {
+			reply_buf[sends] = rte_pktmbuf_alloc(mbuf_pool); 		
+		} while (unlikely(reply_buf[sends]==NULL));
+*/
 		reply_buf[sends]->nb_segs = 1;
 		reply_buf[sends]->next = NULL;
 		reply_buf[sends]->pkt_len = pkt_size;
@@ -321,35 +341,42 @@ void msg_produce(uint16_t port)
 	}
 	pkts[lcore_id].rx += nb_rx;
 	pkts[lcore_id].tx += sends;
-	for (i = 0; i < nb_rx; i++)
+/*	for (i = 0; i < nb_rx; i++)
 	{
 		rte_pktmbuf_free(query_buf[i]);
 	}
-	//printf("RTE_MAX_ETHERPORTS=%d\n",RTE_MAX_ETHPORTS);
+*/	//printf("RTE_MAX_ETHERPORTS=%d\n",RTE_MAX_ETHPORTS);
 	uint16_t ret;
 		
-	ret = rte_eth_tx_burst(port, lcore_id, reply_buf, sends);
+	ret = rte_eth_tx_burst(port, queue_id, reply_buf, BURST_SIZE);
 	/* Free unsent packet. */
 	//printf("Send %d packets, total: %d ,recv: %d\n",ret,sends,nb_rx);	
-	if (likely(ret < sends)) {
+/*	if (likely(ret < sends)) {
 		uint16_t j;
 		for (j = ret; j < sends; j++)
 			rte_pktmbuf_free(reply_buf[j]);
 	}
+*/
 }
+	for (i = 0; i < BURST_SIZE; i++)
+	{
+		rte_pktmbuf_free(reply_buf[i]);
+		rte_pktmbuf_free(query_buf[i]);
+	}
 }
 
 
 void send_main(uint16_t port)
 {
 	//struct rte_mbuf *query_buf, *reply_buf;
-	uint16_t i, lcore_id;
-	uint16_t total_sends=0, last_sends=0, sends=0;
-	
+	uint16_t lcore_id;	
 	/* Run until the application is quit or killed. */
 //	while (!force_quit) {
-		msg_produce(port);
-		
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		rte_eal_remote_launch(msg_produce, port, lcore_id);
+	}
+	msg_produce(port);
+	rte_eal_mp_wait_lcore();		
 		
 //	}
 }
@@ -357,6 +384,7 @@ void send_main(uint16_t port)
  * The lcore main. This is the main thread that does the work, read
  * an query packet and write an reply packet.
  */
+
 static __attribute__((noreturn)) void
 lcore_main(void)
 {
