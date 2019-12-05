@@ -274,7 +274,7 @@ void msg_produce(uint16_t port)
 //		do {
 //			reply_buf[i] = rte_pktmbuf_alloc(mbuf_pool);
 //		} while (unlikely(reply_buf[i] == NULL));
-		reply_buf[i] = query_buf[i];
+		reply_buf[i]->pkt_len = 0;
 		if (eth_hdr->ether_type!=htons(ETHER_TYPE_IPv4) || 
 		ip_hdr->next_proto_id!=IPPROTO_UDP ||
 		udp_hdr->dst_port!=htons(9000)) {
